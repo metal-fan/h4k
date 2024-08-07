@@ -1,0 +1,163 @@
+= Spécifications techniques du prototype de jeu H4K
+
+== Mise en oeuvre de l'environnement de développement
+
+=== Choix de l'environnement
+
+Afin de disposer d'un jeu exécutable sur la majorité des plateformes, j'ai pris le choix d'utiliser le langage Typesecript
+ainsi qu'une librairie 3D Babylon.js . Le choix de cette dernière, par rapport à son concurrent Three.js est fait sur les 
+critères suivants: 
+  * Babylon.js est sponsorisé par Microsoft et dispose d'une large communauté
+  * Three.js ne permet pas d'assurer la dynamique d'effets entre objets
+  * Le support Typescript de Three.js n'est pas officiel
+  * Le support Typescript de Babylon.js est officiel
+
+L'environnement de développement doit donc contenir node.js (support de Typesecript) : une partie du code est transpilée en 
+Javascript et envoyée au navigateur, une autre partie du code est exécutée nativement par node.js
+
+L'environnement de développement a été instancié sous MacOS, mais le principe reste le même sous Linux ou WSL. 
+
+=== Installation globale de node.js
+
+=== Installation globale de typescript
+
+=== Initialisation du projet
+
+On commence par créer la structure du projet, typique des projets Typescript
+
+[source,shell]
+----
+mkdir src public dist
+touch src/app.ts
+touch public/index.html
+----
+
+Nous pouvons maintenant installer dans la branche locale du projet la librairie Babylon.js et ses dépendances. Il faut précéder
+l'initialisation Node.js du projet en créant le package.js que nous configurerons plus tard.
+
+[source,shell]
+----
+npm init
+npm install --save-dev @babylonjs/core
+npm install --save-dev @babylonjs/inspector
+tsc --init
+----
+
+Cette dernière commande créer un fichier tsconfig.json dont nous remplaçons le contenu par le contenu suivant.
+
+[source,javascript]
+----
+{
+  "compilerOptions": {
+    "target": "es6",
+    "module": "ESNext",
+    "moduleResolution": "node",
+    "noResolve": false,
+    "noImplicitAny": false,
+    "sourceMap": true,
+    "preserveConstEnums":true,
+    "lib": [
+        "dom",
+        "es6"
+    ],
+    "rootDir": "src"
+  }
+}
+----
+
+Installons maintenant quelques dépendances, dont webpack (module bundler).
+
+[source,shell]
+----
+npm install --save-dev typescript webpack ts-loader webpack-cli
+----
+
+Créons le fichier de configuration webpack.js dans le répertoire racine du projet avec le contenu suivant:
+
+[source,javascript]
+----
+const path = require("path");
+const fs = require("fs");
+const appDirectory = fs.realpathSync(process.cwd());
+
+module.exports = {
+    entry: path.resolve(appDirectory, "src/app.ts"), //path to the main .ts file
+    output: {
+        filename: "js/bundleName.js", //name for the javascript file that is created/compiled in memory
+    },
+    resolve: {
+        extensions: [".tsx", ".ts", ".js"],
+    },
+    module: {
+        rules: [
+            {
+                test: /\.tsx?$/,
+                use: "ts-loader",
+                exclude: /node_modules/,
+            },
+        ],
+    },
+    mode: "development",
+};
+----
+
+On installe quelques modules complémentaires qui vont nous aider lors du développement (mais qui ne seront pas en production).
+
+[source,shell]
+----
+npm install --save-dev html-webpack-plugin
+npm install --save-dev webpack-dev-server
+----
+
+Après l'installation, nous pouvons mettre à jour le fichier webpack.config.js comme suit:
+
+[source,javascript]
+----
+const path = require("path");
+const fs = require("fs");
+const HtmlWebpackPlugin = require("html-webpack-plugin");
+const appDirectory = fs.realpathSync(process.cwd());
+
+module.exports = {
+    entry: path.resolve(appDirectory, "src/app.ts"), //path to the main .ts file
+    output: {
+        filename: "js/bundleName.js", //name for the js file that is created/compiled in memory
+        clean: true,
+    },
+    resolve: {
+        extensions: [".tsx", ".ts", ".js"],
+    },
+    devServer: {
+        host: "0.0.0.0",
+        port: 8080, //port that we're using for local host (localhost:8080)
+        static: path.resolve(appDirectory, "public"), //tells webpack to serve from the public folder
+        hot: true,
+        devMiddleware: {
+            publicPath: "/",
+        }
+    },
+    module: {
+        rules: [
+            {
+                test: /\.tsx?$/,
+                use: "ts-loader",
+                exclude: /node_modules/,
+            },
+        ],
+    },
+    plugins: [
+        new HtmlWebpackPlugin({
+            inject: true,
+            template: path.resolve(appDirectory, "public/index.html"),
+        })
+    ],
+    mode: "development",
+};
+----
+
+Maintenant, lorsque nous construisons et exécutons notre projet, si nous faisons des mises à jour, le navigateur se rafraîchit pour que nous puissions voir nos changements. De plus, le plugin HTML Webpack prend le fichier bundle javascript qui a été compilé et l'injecte dans notre fichier index.html. Ce bundle .js apparaîtra dans le dossier dist.
+
+== Principes du jeu
+
+
+=== Utilisation de Blender pour les objets 3D
